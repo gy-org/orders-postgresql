@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: orders-postgresql
+  annotations:
+    github.com/project-slug: gy-org/orders-postgresql
+    backstage.io/kubernetes-label-selector: 'app=orders-postgresql'
+  description: orders-postgresql created
+spec:
+  type: service
+  owner: user:guest
+  lifecycle: experimental
+  # dependsOn:
+  #   - resource:crossplane-eks-demo-05
