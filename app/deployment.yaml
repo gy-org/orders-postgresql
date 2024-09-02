@@ -1,19 +1,103 @@
-apiVersion: apps/v1
-kind: Deployment
+---
+# Source: orders/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orders
+  labels:
+    helm.sh/chart: orders-0.0.1
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: orders
+    app.kubernetes.io/component: service
+    app.kuberneres.io/owner: retail-store-sample
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: orders/templates/postgresql-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: orders-db
+data:
+  username: "b3JkZXJz"
+  password: "YVYzZmhyTmJ2dmtwUzBBVQ=="
+---
+# Source: orders/templates/postgresql-service.yaml
+apiVersion: v1
+kind: Service
 metadata:
   name: ${APP_NAME}
+  labels:
+    helm.sh/chart: orders-0.0.1
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: orders
+    app.kubernetes.io/component: postgresql
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: postgresql
+      protocol: TCP
+      name: postgresql
+  selector:
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: orders
+    app.kubernetes.io/component: postgresql
+---
+# Source: orders/templates/postgresql-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ${APP_NAME}
+  labels:
+    helm.sh/chart: orders-0.0.1
+    app.kubernetes.io/name: orders
+    app.kubernetes.io/instance: orders
+    app.kubernetes.io/component: postgresql
+    app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
+  serviceName: ${APP_NAME}
   selector:
     matchLabels:
       app: ${APP_NAME}
+      app.kubernetes.io/name: orders
+      app.kubernetes.io/instance: orders
+      app.kubernetes.io/component: postgresql
   template:
     metadata:
       labels:
         app: ${APP_NAME}
+        app.kubernetes.io/name: orders
+        app.kubernetes.io/instance: orders
+        app.kubernetes.io/component: postgresql
     spec:
       containers:
-      - name: app
-        image: "${IMAGE}"
-        ports:
-        - containerPort: 80
+        - name: postgresql
+          image: "public.ecr.aws/docker/library/postgres:16.1"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_DB
+              value: orders
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: orders-db
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: orders-db
+                  key: password
+            - name: PGDATA
+              value: /data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+      volumes:
+      - name: data
+        emptyDir: {}
